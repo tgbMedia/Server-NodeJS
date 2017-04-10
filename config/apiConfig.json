@@ -1,0 +1,7 @@
+{
+	"requestStatusKey": "status",
+	"successStatus": "OK",
+	"failedStatus": "ERROR",
+	"resultsKey": "results",
+	"errorKey": "error"
+}

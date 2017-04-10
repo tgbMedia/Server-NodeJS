@@ -1,13 +1,14 @@
 var express = require('express'),
 	movieUtils = require('./movieUtils.js'),
-	appConfig = require('./config/appConfig.json');
+	appConfig = require('./config/appConfig.json'),
+	api = require('./api.js');
 
 var app = express();
 
 app.get('/movies_list', (req, res) => {
 	movieUtils.moviesList(
 		appConfig.moviesDir, 
-		result => res.end(JSON.stringify(result))
+		result => api.response(res, true, "", result)
 	);
 });
 

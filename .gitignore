@@ -58,4 +58,4 @@ typings/
 .env
 
 #Project configuration
-config/*.json
+config/appConfig.json
