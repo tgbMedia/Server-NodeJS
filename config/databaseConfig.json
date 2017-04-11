@@ -1,0 +1,6 @@
+{
+	"databasesDir": "database",
+	"titleToPathDb": {
+		"schemaName" : "videos"
+	}
+}
