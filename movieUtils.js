@@ -25,11 +25,12 @@ module.exports = {
 				let movieDetails = tnp(path.basename(moviePath));
 
 				//Push movie to the databse
-				db.get(dbConfig.titleToPathDb.schemaName)
-				  .push({ title: movieDetails.title, path: moviePath})
-				  .write()
+				if(!this.titleToPath(movieDetails.title)){
+					db.get(dbConfig.titleToPathDb.schemaName)
+					  .push({ title: movieDetails.title, path: moviePath})
+					  .write()
 
-				movieDetails.path = moviePath;
+				}
 
 				return movieDetails;
 			}));
