@@ -7,11 +7,8 @@ var express = require('express'),
 	api = require('./api.js');
 
 var app = express();
-app.use(express.static(__dirname + '/flowplayer'));
-app.get('/', function(req, res) {
-  res.sendFile(__dirname + '/index.html');
-});
 
+app.use(express.static(__dirname + '/flowplayer'));
 
 app.get('/movies_list', (req, res) => {
 	movieUtils.moviesList(
@@ -32,10 +29,11 @@ app.get('/video/:title', function(req, res) {
 		//Stream it!
 		//res.contentType('flv');
 
-		const size = metadata.format.size;
-		const start = 0;
-		const end = size - 1;
-		const chunkSize = (end - start) + 1;
+		const { range } = req.headers;
+	    const size = metadata.format.size;
+	    const start = Number((range || '').replace(/bytes=/, '').split('-')[0]);
+	    const end = size - 1;
+	    const chunkSize = (end - start) + 1;
 
 		res.set({
 	       'Content-Range': `bytes ${start}-${end}/${size}`,
@@ -48,8 +46,6 @@ app.get('/video/:title', function(req, res) {
 
 		var pathToMovie = path.resolve(appConfig.moviesDir, videoPath.path);
 		
-console.log(metadata.format.duration);
-
 		var proc = ffmpeg(pathToMovie)
 			.format('mp4')
 			.outputOptions('-frag_duration 150000')
@@ -59,12 +55,14 @@ console.log(metadata.format.duration);
 			.on('end', function() {
 				console.log('file has been converted succesfully');
 			})
-			.on('error', function(err) {
+			.on('error', function(err, stdout, stderr) {
 				console.log('an error happened: ' + err.message);
 			})			
 			.pipe(res, {end:true});
 
-	  	console.log();
+		/*const stream = fs.createReadStream(pathToMovie, { start, end });
+	    stream.on('open', () => stream.pipe(res));
+	    stream.on('error', (streamErr) => res.end(streamErr));*/
 	});
 
 	/*movieFile = path.resolve(appConfig.moviesDir, videoPath.path);
