@@ -37,7 +37,21 @@ module.exports = {
 		});
 	},
 
-	stream: function(movieTitle){
+	m3u8Generate(dirPath, segmentTime, videoDuration){
+		let content = "#EXTM3U\n"
+			+ "#EXT-X-VERSION:3\n"
+			+ "#EXT-X-MEDIA-SEQUENCE:0\n"
+			+ "#EXT-X-ALLOW-CACHE:YES\n"
+			+ "#EXT-X-TARGETDURATION:15\n";
 
+		let totalSegments = videoDuration / segmentTime;
+
+		for(let i = 0; i < totalSegments; i++){
+			content += "#EXTINF:5,\n"
+				+ `/static/${dirPath}/${i}.ts\n`;
+		}
+
+		content += "#EXT-X-ENDLIST";
+		return content;
 	}
 }

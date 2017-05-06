@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "dependencies": {
     "express": ">= 4.15.2",
-	"globby": ">= 6.1.0",
-	"torrent-name-parser": ">= 0.6.5",
-	"fluent-ffmpeg": ">= 2.1.0",
-	"lowdb": ">= 0.16.2"
+    "fluent-ffmpeg": ">= 2.1.0",
+    "globby": ">= 6.1.0",
+    "lowdb": ">= 0.16.2",
+    "send-seekable": "^1.0.4",
+    "torrent-name-parser": ">= 0.6.5"
   }
 }

@@ -4,9 +4,25 @@ var express = require('express'),
 	ffmpeg = require('fluent-ffmpeg'),
 	path = require('path'),
 	fs = require('fs'),
-	api = require('./api.js');
+	api = require('./api.js'),
+	shortid = require('shortid'),
+	rimraf = require('rimraf');
 
 var app = express();
+var lastProcess = undefined;
+
+//-c:v libx264 -preset fast -c:a libmp3lame -b:a 128k
+/*ffmpeg
+ -i <Source>
+ -y
+ -bsf:v h264_mp4toannexb
+ -c copy
+ -map 0
+ -flags
+ -global_header
+ -segment_time 5
+ -segment_format mpegts
+ -f segment <Output>*/
 
 app.use(express.static(__dirname + '/flowplayer'));
 
@@ -17,7 +33,36 @@ app.get('/movies_list', (req, res) => {
 	);
 });
 
-app.get('/video/:title', function(req, res) {
+app.use('/static', express.static('public'))
+
+app.get('/video/:title.m3u8', function(req, res) {
+
+	//TODO: Make it better! :(
+	
+	//Kill last process
+	if(typeof lastProcess !== "undefined")
+	{
+		lastProcess.kill();
+		console.log("Kill last process");
+	}
+
+	//Create new session
+	const sessionId = shortid.generate();
+	const tempFilesDir = `public/${sessionId}`;
+
+	try {
+		rimraf(
+			path.resolve(__dirname, tempFilesDir), 
+			function (){ 
+				fs.mkdirSync(`public/${sessionId}`);
+			});
+
+		
+	} 
+	catch (err) {
+		if (err.code !== 'EEXIST') 
+			throw err
+	}
 
 	//Get movie path from the local database 
 	let videoPath = movieUtils.titleToPath(req.params.title);
@@ -25,74 +70,73 @@ app.get('/video/:title', function(req, res) {
 	if(!videoPath) //Movie title does not exists in the database
 		return api.response(res, false, "Movie does not exists", null);
 	
-	ffmpeg.ffprobe(path.resolve(appConfig.moviesDir, videoPath.path),function(err, metadata) {
+	const pathToMovie = path.resolve(appConfig.moviesDir, videoPath.path);
+
+	ffmpeg.ffprobe(pathToMovie, function(err, metadata) {
 		//Stream it!
-		//res.contentType('flv');
 
-		const { range } = req.headers;
-	    const size = metadata.format.size;
-	    const start = Number((range || '').replace(/bytes=/, '').split('-')[0]);
-	    const end = size - 1;
-	    const chunkSize = (end - start) + 1;
+		//Create directory watcher
+		var chokidar = require('chokidar');
+		const watcher = chokidar.watch(`public/${sessionId}/`, {});
 
-		res.set({
-	       'Content-Range': `bytes ${start}-${end}/${size}`,
-	       'Accept-Ranges': 'bytes',
-	       'Content-Length': chunkSize,
-	       'Content-Type': 'video/mp4',
-	     });
-	     // É importante usar status 206 - Partial Content para o streaming funcionar
-	     res.status(206);
+		var totalTempFiles = 0;
 
-		var pathToMovie = path.resolve(appConfig.moviesDir, videoPath.path);
-		
-		var proc = ffmpeg(pathToMovie)
-			.format('mp4')
-			.outputOptions('-frag_duration 150000')
-			.outputOptions('-g 250')
-		    .videoCodec('libx264')
-		    .audioCodec('aac')
-			.on('end', function() {
-				console.log('file has been converted succesfully');
+		watcher.on('add', function(filePath) { 
+			if(++totalTempFiles > 50)
+			{
+				res.send(movieUtils.m3u8Generate(sessionId, 5, metadata.format.duration));
+				watcher.close();
+			}
+		})
+
+		const contentType = 'video/mp4';
+		const length = metadata.format.size;
+
+		lastProcess = ffmpeg(pathToMovie)
+			.on('start', function(commandLine) {
+				console.log(commandLine);
+				//process.exit()
 			})
+			.outputOptions([
+				'-bsf:v h264_mp4toannexb',
+				'-c copy',
+				'-map 0',
+				'-flags -global_header',
+				'-segment_time 5',
+				'-segment_format mpegts'
+			])
+			.format('segment')
+			.output(`${tempFilesDir}/%d.ts`)
 			.on('error', function(err, stdout, stderr) {
-				console.log('an error happened: ' + err.message);
-			})			
-			.pipe(res, {end:true});
+				//console.log('an error happened: ' + err.message + stdout + stderr);
+				console.log('Delete ' + path.resolve(__dirname, tempFilesDir));
+				rimraf(path.resolve(__dirname, tempFilesDir), function () { console.log('done'); });
+			})
+			.on('end', function(err, stdout, stderr) {
+				console.log('End!');
+				//res.end();
+			});
 
-		/*const stream = fs.createReadStream(pathToMovie, { start, end });
-	    stream.on('open', () => stream.pipe(res));
-	    stream.on('error', (streamErr) => res.end(streamErr));*/
+		lastProcess.run();
+
 	});
 
-	/*movieFile = path.resolve(appConfig.moviesDir, videoPath.path);
+});
 
-	fs.stat(movieFile, (err, stats) => {
-     if (err) {
-       console.log(err);
-       return res.status(404).end('<h1>Movie Not found</h1>');
-     }
-     // Variáveis necessárias para montar o chunk header corretamente
-     const { range } = req.headers;
-     const { size } = stats;
-     const start = Number((range || '').replace(/bytes=/, '').split('-')[0]);
-     const end = size - 1;
-     const chunkSize = (end - start) + 1;
-     // Definindo headers de chunk
-     res.set({
-       'Content-Range': `bytes ${start}-${end}/${size}`,
-       'Accept-Ranges': 'bytes',
-       'Content-Length': chunkSize,
-       'Content-Type': 'video/mp4'
-     });
-     // É importante usar status 206 - Partial Content para o streaming funcionar
-     res.status(206);
-     // Utilizando ReadStream do Node.js
-     // Ele vai ler um arquivo e enviá-lo em partes via stream.pipe()
-     const stream = fs.createReadStream(movieFile, { start, end });
-     stream.on('open', () => stream.pipe(res));
-     stream.on('error', (streamErr) => res.end(streamErr));
-   });*/
+app.get('/kilLastProcess', (req, res) => {
+	//Kill last process
+	console.log('kilLastProcess request');
+
+	if(typeof lastProcess !== "undefined")
+	{
+		api.response(res, true, "", [])
+
+		lastProcess.kill();
+		console.log("Kill last process");
+	}
+	else
+		api.response(res, false, "", [])
+
 });
 
 app.listen(appConfig.serverPort, function () {
