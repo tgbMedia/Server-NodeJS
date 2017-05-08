@@ -47,7 +47,7 @@ module.exports = {
 		let totalSegments = videoDuration / segmentTime;
 
 		for(let i = 0; i < totalSegments; i++){
-			content += "#EXTINF:5,\n"
+			content += `#EXTINF:${segmentTime},\n`
 				+ `/static/${dirPath}/${i}.ts\n`;
 		}
 
