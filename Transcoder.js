@@ -41,13 +41,6 @@ Transcoder.prototype.pathToPartIndex = function(filePath, validExt = '.ts'){
 	return parseInt(partFileName.split('.')[0]);
 }
 
-Transcoder.prototype.tmpFileRename = function(filePath){
-	fs.rename(
-		filePath, 
-		this.tempFilesDir + '/' + (this.pathToPartIndex(filePath, '.tmp') + this.config.segmentOffset) + '.ts'
-	);
-}
-
 Transcoder.prototype.transcode = function(cb, startTime = 0) {
 	watcherResCallback = cb;
 
@@ -57,23 +50,18 @@ Transcoder.prototype.transcode = function(cb, startTime = 0) {
 		this.metadata = fileMetadata;
 
 		//Create watcher for temp files
-		this.watcher = chokidar.watch(`${this.tempFilesDir}/*.tmp`);
+		this.watcher = chokidar.watch(`${this.tempFilesDir}/*.ts`);
 
 		this.watcher.on('add', filePath => {
-
-			//Last file is ready for changes?
-			if(typeof this.lastAddedFile !== "undefined")
-				this.tmpFileRename(this.lastAddedFile);
-			
-			//Update last added file
-			this.lastAddedFile = filePath;
 
 			if(typeof watcherResCallback == "undefined")
 				return;
 
 			//Parse file name
 			let partFileName = path.basename(filePath);
-			let partIndex = parseInt(partFileName.split('.')[0]);
+			let partIndex = parseInt(partFileName.split('.')[0]) - this.config.segmentOffset;
+
+			console.log("Part index: " + partIndex);
 
 			if(this.seekRequest && partIndex > MRPAS){
 				this.seekRequest = false;
@@ -105,14 +93,19 @@ Transcoder.prototype.transcode = function(cb, startTime = 0) {
 			.inputOptions('-ss ' + startTime)
 			.outputOptions([
 				'-bsf:v h264_mp4toannexb',
-				'-c copy',
-				'-map 0',
+				'-codec:v copy',
+				'-codec:a libmp3lame',
+				'-strict experimental',
+				'-segment_start_number ' + this.config.segmentOffset,
+				'-b:a 128k',
+				'-ac 2',
+				'-movflags +faststart',
 				'-flags -global_header',
 				'-segment_time ' + this.config.segmentTime,
 				'-segment_format mpegts',
 			])
 			.format('segment')
-			.output(`${this.tempFilesDir}/%d.tmp`)
+			.output(`${this.tempFilesDir}/%d.ts`)
 			.on('error', function(err, stdout, stderr) {
 				//console.log('an error happened: ' + err.message + stdout + stderr);
 				//console.log('Delete ' + path.resolve(__dirname, tempFilesDir));
