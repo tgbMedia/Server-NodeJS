@@ -61,7 +61,7 @@ app.get('/video/:title.m3u8', function(req, res) {
 			publicDir: 'public',
 			segmentTime: 5,
 			segmentOffset: 0,
-			minPartsForStream: 5
+			minPartsForStream: 3
 
 		});
 

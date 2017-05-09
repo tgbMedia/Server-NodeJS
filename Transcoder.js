@@ -7,6 +7,7 @@ var path = require('path'),
 
 var m3u8IsAlreadySent = false;
 var watcherResCallback = undefined;
+var lastSeekPart = 0;
 
 const MRPAS = 5; //MIN_READY_PARTS_AFTER_SEEK
 
@@ -43,6 +44,7 @@ Transcoder.prototype.pathToPartIndex = function(filePath, validExt = '.ts'){
 
 Transcoder.prototype.transcode = function(cb, startTime = 0) {
 	watcherResCallback = cb;
+	this.lastStartTime = startTime;
 
 	ffmpeg.ffprobe(this.config.videoPath, (err, fileMetadata) => {
 
@@ -62,6 +64,7 @@ Transcoder.prototype.transcode = function(cb, startTime = 0) {
 			let partIndex = parseInt(partFileName.split('.')[0]) - this.config.segmentOffset;
 
 			console.log("Part index: " + partIndex);
+			lastSeekPart = partIndex;
 
 			if(this.seekRequest && partIndex > MRPAS){
 				this.seekRequest = false;
@@ -128,6 +131,14 @@ Transcoder.prototype.transcode = function(cb, startTime = 0) {
 };
 
 Transcoder.prototype.seekToPart = function(partIndex, cb) {
+	console.log(`Seek request partIndex: ${partIndex}, lastSeekPart = ${lastSeekPart}`)
+
+	if(lastSeekPart == partIndex || (partIndex - 3) < lastSeekPart){
+		console.log("Seek request: Already working...");
+		cb();
+		return;
+	}
+
 	fs.exists(`${this.tempFilesDir}/${partIndex}.ts`, (exists) => {
 		if(exists)
 		{
