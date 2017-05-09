@@ -91,14 +91,17 @@ Transcoder.prototype.transcode = function(cb, startTime = 0) {
 				console.log(commandLine);
 			})
 			.inputOptions('-ss ' + startTime)
+			.videoCodec('libx264')
+			.audioBitrate('128k')
+			.size('60%')
 			.outputOptions([
 				'-bsf:v h264_mp4toannexb',
-				'-codec:v copy',
+				//'-codec:v copy',
 				'-codec:a libmp3lame',
+				//'-b:a 128k',
+				'-ac 2',
 				'-strict experimental',
 				'-segment_start_number ' + this.config.segmentOffset,
-				'-b:a 128k',
-				'-ac 2',
 				'-movflags +faststart',
 				'-flags -global_header',
 				'-segment_time ' + this.config.segmentTime,
