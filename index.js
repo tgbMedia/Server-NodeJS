@@ -6,10 +6,6 @@ var express = require('express'),
 	shortid = require('shortid'),
 	Transcoder = require('./Transcoder.js');
 
-/*
-ffmpeg -ss 0 -i D:\PlexServer\Movies\Doctor.Strange.2016.1080p.BluRay.x264-SPARKS\Doctor.Strange.2016.1080p.BluRay.x264-SPARKS.mkv -y -bsf:v h264_mp4toannexb -codec:v copy -codec:a copy -strict experimental -map 0 -flags -global_header -segment_time 15 -segment_format mpegts -f segment g:\work\TGB_MEDIA_SERVER\public\HkhylrR1Z/%d.tmp
-*/
-
 var proc = undefined;
 var app = express();
 
@@ -20,6 +16,16 @@ function killLastProcess(cb){
 	else
 		cb();
 }
+
+//Close running processes 
+process.on('SIGINT', function() {
+	console.log("Shutting down...");
+
+	killLastProcess(() => {
+		console.log("Good bye");
+		process.exit();
+	});
+});
 
 app.use('/static', function(req, res, next) {
     if(typeof proc !== "undefined" && path.extname(req.originalUrl) == '.ts'){
@@ -45,6 +51,9 @@ app.get('/movies_list', (req, res) => {
 app.get('/video/:title.m3u8', function(req, res) {
 	console.log(req.params.title + ".m3u8")
 
+	//TODO: make it smarter
+	//TODO: support multiple sessions
+
 	killLastProcess(() => {
 		proc = new Transcoder({
 			sessionId: shortid.generate(),
@@ -52,7 +61,7 @@ app.get('/video/:title.m3u8', function(req, res) {
 			publicDir: 'public',
 			segmentTime: 5,
 			segmentOffset: 0,
-			minPartsForStream: 2
+			minPartsForStream: 5
 
 		});
 
