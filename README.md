@@ -1,4 +1,4 @@
-# TGB Client server
+# TGB PC server
 
 # Build
 Create config/appConfig.json file
