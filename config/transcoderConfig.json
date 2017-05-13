@@ -1,0 +1,7 @@
+{
+	"publicDir": "public",
+	"segmentTime": 5,
+	"minPartsForStream": 1,
+	"minPartsForSeek": 5, 
+	"maxLiveParts": 15
+}

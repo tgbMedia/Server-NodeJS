@@ -3,10 +3,17 @@
   "version": "1.0.0",
   "dependencies": {
     "express": ">= 4.15.2",
+    "fingerprintjs": "^0.5.3",
+    "fingerprintjs2": "^1.5.1",
     "fluent-ffmpeg": ">= 2.1.0",
     "globby": ">= 6.1.0",
+    "install": "^0.10.1",
+    "loadash": "0.0.1",
     "lowdb": ">= 0.16.2",
+    "nconf": "^0.8.4",
+    "npm": "^4.5.0",
     "send-seekable": "^1.0.4",
-    "torrent-name-parser": ">= 0.6.5"
+    "sequelize": "^3.30.4",
+    "torrent-name-parser": "^0.6.5"
   }
 }

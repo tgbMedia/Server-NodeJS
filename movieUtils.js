@@ -1,38 +1,59 @@
-var dbConfig = require('./config/databaseConfig.json'),
-	videoExtensions = require("./video-extensions.json"),
-	globby = require('globby'),
+var videoExtensions = require("./video-extensions.json"),
+	glob = require("glob"),
 	path = require('path'),
-	tnp = require('torrent-name-parser'),
-	low = require('lowdb');
-
-const db = low(dbConfig.databasesDir + '/titleToPath.json');
-
-db.defaults({ videos: [] })
-  .write();
+	tnp = require('torrent-name-parser');
 	
 module.exports = {
-	videoGlob: [`**/*.{${videoExtensions.join(',')}}`, '!**/*{sample,Sample,rarbg.com,RARBG.com}*.*'],
-
-	titleToPath: function(title){
-		return movieTitle = db.get(dbConfig.titleToPathDb.schemaName)
-		  .find({ title: title })
-		  .value();
+	allVideoFiles: function(path, cb){
+		glob(`**/*.{${videoExtensions.join(',')}}`, {
+			cwd: path
+		}, cb);
 	},
 
-	moviesList: function(moviesDirectory, cb){
-		globby(this.videoGlob,  {'cwd': moviesDirectory}).then(movies => {
-			cb(movies.map(moviePath => {
-				let movieDetails = tnp(path.basename(moviePath));
+	addVideo: function(filePath, model){
+		return new Promise(function(resolve, reject){
+			let parseName = tnp(path.basename(filePath));			
 
-				//Push movie to the databse
-				if(!this.titleToPath(movieDetails.title)){
-					db.get(dbConfig.titleToPathDb.schemaName)
-					  .push({ title: movieDetails.title, path: moviePath})
-					  .write()
+			model.findOrCreate({
+				where: {path: filePath},
+				defaults: {title: parseName.title, year: parseName.year}
+			})
+			.spread(function(movie, created){
+				return resolve(movie);
+			})
+			.catch(err => {
+				return reject(err);
+			})
+		})
+	},
 
+	refreshVideosList: function(path, model){
+		return new Promise((resolve, reject) => {
+			this.allVideoFiles(path, (err, files) => {
+				if(err){
+					return reject(err);
 				}
 
-				return movieDetails;
+				let promises = files.map(file => {
+					return this.addVideo(file, model);
+				})
+
+				Promise.all(promises)
+					.then(results => {
+						return resolve(this.videosListResponse(results));
+					});
+			})
+		});
+	},
+
+	videosListResponse: function(movies){
+		return new Promise(function(resolve, reject){
+			return resolve(movies.map(video => {
+				return {
+					id: video.id,
+					title: video.title,
+					year: video.year
+				}
 			}));
 		});
 	},
@@ -54,4 +75,5 @@ module.exports = {
 		content += "#EXT-X-ENDLIST";
 		return content;
 	}
+
 }

@@ -5,13 +5,10 @@ var path = require('path'),
 	rimraf = require('rimraf'),
 	movieUtils = require('./movieUtils.js');
 
-var m3u8IsAlreadySent = false;
-var watcherResCallback = undefined;
-var lastSeekPart = 0;
+//Private variables 
+//var watcherResCallback = undefined;
+var lastTranscodedPart = 0;
 
-const MRPAS = 5; //MIN_READY_PARTS_AFTER_SEEK
-
-// Constructor
 function Transcoder(config) {
   this.config = config;
   this.tempFilesDir = path.resolve(__dirname, `${this.config.publicDir}/${this.config.sessionId}`);
@@ -22,7 +19,7 @@ function Transcoder(config) {
 Transcoder.prototype.createTempDir = function(){
 	//Remove if already exists
 	console.log('Create temp directory ' + this.tempFilesDir);
-
+	
 	try {
 		rimraf(this.tempFilesDir, () =>{ 
 			fs.mkdirSync(this.tempFilesDir);
@@ -39,12 +36,11 @@ Transcoder.prototype.pathToPartIndex = function(filePath, validExt = '.ts'){
 		return -1;
 
 	let partFileName = path.basename(filePath);
+
 	return parseInt(partFileName.split('.')[0]);
 }
 
 Transcoder.prototype.transcode = function(cb, startTime = 0) {
-	watcherResCallback = cb;
-	this.lastStartTime = startTime;
 
 	ffmpeg.ffprobe(this.config.videoPath, (err, fileMetadata) => {
 
@@ -56,21 +52,21 @@ Transcoder.prototype.transcode = function(cb, startTime = 0) {
 
 		this.watcher.on('add', filePath => {
 
-			if(typeof watcherResCallback == "undefined")
-				return;
-
 			//Parse file name
 			let partFileName = path.basename(filePath);
 			let partIndex = parseInt(partFileName.split('.')[0]) - this.config.segmentOffset;
 
-			console.log("Part index: " + partIndex);
-			lastSeekPart = partIndex;
+			lastTranscodedPart = partIndex + this.config.segmentOffset;
+			console.log("Last transcoded part: " + lastTranscodedPart);
 
-			if(this.seekRequest && partIndex > MRPAS){
+			if(typeof cb == "undefined")
+				return;
+
+			if(this.seekRequest && partIndex > this.config.mrpas){
 				this.seekRequest = false;
 
-				watcherResCallback();
-				watcherResCallback = undefined;
+				cb();
+				cb = undefined;
 
 				console.log('Seek request completed!');
 			}
@@ -78,13 +74,13 @@ Transcoder.prototype.transcode = function(cb, startTime = 0) {
 			{
 				console.log("Send m3u8...");
 
-				watcherResCallback(movieUtils.m3u8Generate(
+				cb(movieUtils.m3u8Generate(
 					this.config.sessionId, 
 					this.config.segmentTime, 
 					this.metadata.format.duration
 				));
 
-				watcherResCallback = undefined;
+				cb = undefined;
 			}
 		});
 
@@ -113,42 +109,46 @@ Transcoder.prototype.transcode = function(cb, startTime = 0) {
 			.format('segment')
 			.output(`${this.tempFilesDir}/%d.ts`)
 			.on('error', function(err, stdout, stderr) {
-				//console.log('an error happened: ' + err.message + stdout + stderr);
-				//console.log('Delete ' + path.resolve(__dirname, tempFilesDir));
-				//rimraf(path.resolve(__dirname, tempFilesDir), function () { console.log('done'); });
+				//console.log('an error happened: ' + err.message/* + stdout + stderr*/);
 			})
 			.on('end', function(err, stdout, stderr) {
 				console.log('End!');
-				//res.end();
 			});
 
 		//Run command!
 		this.proc.run();
 
-		console.log('Trancode start time: ' + startTime)
+		console.log('Transcoding, start time: ' + startTime);
 
 	});
 };
 
 Transcoder.prototype.seekToPart = function(partIndex, cb) {
-	console.log(`Seek request partIndex: ${partIndex}, lastSeekPart = ${lastSeekPart}`)
+	console.log(`Seek request partIndex: ${partIndex}, lastTranscodedPart: ${lastTranscodedPart}`)
 
-	if(lastSeekPart == partIndex || (partIndex - 3) < lastSeekPart){
-		console.log("Seek request: Already working...");
+	/*if(lastTranscodedPart == partIndex || (partIndex - 5) < lastTranscodedPart){
+		console.log(`Seek request: part ${partIndex} is already in progress`);
 		cb();
 		return;
-	}
+	}*/
 
 	fs.exists(`${this.tempFilesDir}/${partIndex}.ts`, (exists) => {
 		if(exists)
 		{
-			console.log('Part ' + partIndex + ' is already exists');
+			console.log(`Seek request: part ${partIndex} is already exists`);
+			cb();
+			return;
+		}
+		
+		if(partIndex > lastTranscodedPart && lastTranscodedPart + 5 > partIndex)
+		{
+			console.log(`Seek request: part ${partIndex} is already in progress`);
 			cb();
 			return;
 		}
 
 		this.seekRequest = true;
-		console.log('Part ' + partIndex + ' is missing!');
+		console.log(`Seek request: part ${partIndex} is missing, killing current transcoder process`);
 
 		this.kill(() => {
 			this.config.segmentOffset = partIndex;
@@ -161,6 +161,7 @@ Transcoder.prototype.seekToPart = function(partIndex, cb) {
 }
 
 Transcoder.prototype.deleteTempFiles = function(cb) {
+	console.log("Deleting temp files " + this.tempFilesDir);
 	rimraf(this.tempFilesDir, cb);
 }
 
@@ -174,6 +175,8 @@ Transcoder.prototype.killProc = function() {
 }
 
 Transcoder.prototype.kill = function(cb) {
+	console.log("Killing session: " + this.config.sessionId);
+
 	this.killProc();
 	this.deleteTempFiles(cb);
 }

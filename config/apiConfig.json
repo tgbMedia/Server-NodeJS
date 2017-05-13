@@ -1,6 +1,7 @@
 {
 	"requestStatusKey": "status",
 	"successStatus": "OK",
+	"sessionId": "sessionId",
 	"failedStatus": "ERROR",
 	"resultsKey": "results",
 	"errorKey": "error"

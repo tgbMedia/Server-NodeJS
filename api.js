@@ -7,5 +7,9 @@ module.exports = {
 			[config.errorKey]: error,
 			[config.resultsKey]: results,
 		}));
+	},
+	error: function(res, message, statusCode){
+		res.status(statusCode);
+		res.send(message);
 	}
 }
