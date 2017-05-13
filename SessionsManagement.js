@@ -5,6 +5,15 @@ var liveSessions = [];
 
 module.exports = {
 	start: function(fingerPrint, res, videoFilePath, cb){
+		if(typeof liveSessions[fingerPrint] !== "undefined" 
+			&& liveSessions[fingerPrint].config.videoPath == videoFilePath){
+
+			console.log('----- Start request for the same file! -----');
+			liveSessions[fingerPrint].setM3u8Callback(cb);
+
+			return;
+		}
+
 		this.killSession(fingerPrint, () => {
 			//Create new transcoder
 			liveSessions[fingerPrint] = new Transcoder({

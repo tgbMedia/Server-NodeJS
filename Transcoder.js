@@ -7,6 +7,7 @@ var path = require('path'),
 
 //Private variables 
 //var watcherResCallback = undefined;
+var m3u8Callback = undefined;
 var lastTranscodedPart = 0;
 
 function Transcoder(config) {
@@ -22,7 +23,10 @@ Transcoder.prototype.createTempDir = function(){
 	
 	try {
 		rimraf(this.tempFilesDir, () =>{ 
-			fs.mkdirSync(this.tempFilesDir);
+			try{
+				fs.mkdirSync(this.tempFilesDir);
+			}
+			catch(err){}
 		});
 	} 
 	catch (err) {
@@ -40,9 +44,16 @@ Transcoder.prototype.pathToPartIndex = function(filePath, validExt = '.ts'){
 	return parseInt(partFileName.split('.')[0]);
 }
 
+Transcoder.prototype.setM3u8Callback = function(cb) {
+	m3u8Callback = cb;
+}
+
 Transcoder.prototype.transcode = function(cb, startTime = 0) {
 
 	ffmpeg.ffprobe(this.config.videoPath, (err, fileMetadata) => {
+
+		//Update callback
+		m3u8Callback = cb;
 
 		//Store metadata
 		this.metadata = fileMetadata;
@@ -59,14 +70,14 @@ Transcoder.prototype.transcode = function(cb, startTime = 0) {
 			lastTranscodedPart = partIndex + this.config.segmentOffset;
 			console.log("Last transcoded part: " + lastTranscodedPart);
 
-			if(typeof cb == "undefined")
+			if(typeof m3u8Callback == "undefined")
 				return;
 
 			if(this.seekRequest && partIndex > this.config.mrpas){
 				this.seekRequest = false;
 
-				cb();
-				cb = undefined;
+				m3u8Callback();
+				m3u8Callback = undefined;
 
 				console.log('Seek request completed!');
 			}
@@ -74,13 +85,13 @@ Transcoder.prototype.transcode = function(cb, startTime = 0) {
 			{
 				console.log("Send m3u8...");
 
-				cb(movieUtils.m3u8Generate(
+				m3u8Callback(movieUtils.m3u8Generate(
 					this.config.sessionId, 
 					this.config.segmentTime, 
 					this.metadata.format.duration
 				));
 
-				cb = undefined;
+				m3u8Callback = undefined;
 			}
 		});
 
@@ -92,7 +103,7 @@ Transcoder.prototype.transcode = function(cb, startTime = 0) {
 			.inputOptions('-ss ' + startTime)
 			.videoCodec('libx264')
 			.audioBitrate('128k')
-			.size('45%')
+			.size('720x1280')
 			.outputOptions([
 				//'-bsf:v h264_mp4toannexb',
 				//'-codec:v copy',
