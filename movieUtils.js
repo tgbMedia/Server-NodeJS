@@ -14,11 +14,12 @@ module.exports = {
 		return new Promise(function(resolve, reject){
 			let parseName = tnp(path.basename(filePath));			
 
-			model.findOrCreate({
-				where: {path: filePath},
-				defaults: {title: parseName.title, year: parseName.year}
+			model.create({
+				title: parseName.title,
+				 year: parseName.year,
+				 path: filePath
 			})
-			.spread(function(movie, created){
+			.then(function(movie){
 				return resolve(movie);
 			})
 			.catch(err => {
@@ -29,20 +30,23 @@ module.exports = {
 
 	refreshVideosList: function(path, model){
 		return new Promise((resolve, reject) => {
-			this.allVideoFiles(path, (err, files) => {
-				if(err){
-					return reject(err);
-				}
+			model.sync({force: true})
+				.then(() => {
+					this.allVideoFiles(path, (err, files) => {
+						if(err){
+							return reject(err);
+						}
 
-				let promises = files.map(file => {
-					return this.addVideo(file, model);
-				})
+						let promises = files.map(file => {
+							return this.addVideo(file, model);
+						})
 
-				Promise.all(promises)
-					.then(results => {
-						return resolve(this.videosListResponse(results));
-					});
-			})
+						Promise.all(promises)
+							.then(results => {
+								return resolve(this.videosListResponse(results));
+							});
+					})
+				});
 		});
 	},
 
