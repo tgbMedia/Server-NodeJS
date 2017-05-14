@@ -103,11 +103,14 @@ Transcoder.prototype.transcode = function(cb, startTime = 0) {
 			.inputOptions('-ss ' + startTime)
 			.videoCodec('libx264')
 			.audioBitrate('128k')
-			.size('720x1280')
+			.size('768x1024')
 			.outputOptions([
 				//'-bsf:v h264_mp4toannexb',
 				//'-codec:v copy',
 				'-codec:a libmp3lame',
+				'-profile:v main',
+				'-preset:v ultrafast',
+				'-level 3.1',
 				//'-b:a 128k',
 				//'-ac 2',
 				//'-strict experimental',
@@ -120,7 +123,7 @@ Transcoder.prototype.transcode = function(cb, startTime = 0) {
 			.format('segment')
 			.output(`${this.tempFilesDir}/%d.ts`)
 			.on('error', function(err, stdout, stderr) {
-				//console.log('an error happened: ' + err.message/* + stdout + stderr*/);
+				console.log('an error happened: ' + err.message/* + stdout + stderr*/);
 			})
 			.on('end', function(err, stdout, stderr) {
 				console.log('End!');
