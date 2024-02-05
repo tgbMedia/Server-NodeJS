@@ -2,8 +2,8 @@ var path = require('path'),
 	fs = require('fs'),
 	ffmpeg = require('fluent-ffmpeg'),
 	chokidar = require('chokidar'),
-	rimraf = require('rimraf'),
-	movieUtils = require('./movieUtils.js');
+	{ rimraf, rimrafSync} = require('rimraf'),
+	movieUtils = require('./data/movieUtils.js');
 
 //Private variables 
 //var watcherResCallback = undefined;
@@ -12,7 +12,7 @@ var lastTranscodedPart = 0;
 
 function Transcoder(config) {
   this.config = config;
-  this.tempFilesDir = path.resolve(__dirname, `${this.config.publicDir}/${this.config.sessionId}`);
+  this.tempFilesDir = path.resolve(process.cwd(), `${this.config.publicDir}/${this.config.sessionId}`);
 
   this.createTempDir();
 }
@@ -22,12 +22,8 @@ Transcoder.prototype.createTempDir = function(){
 	console.log('Create temp directory ' + this.tempFilesDir);
 	
 	try {
-		rimraf(this.tempFilesDir, () =>{ 
-			try{
-				fs.mkdirSync(this.tempFilesDir);
-			}
-			catch(err){}
-		});
+		 rimrafSync(this.tempFilesDir);
+		 fs.mkdirSync(this.tempFilesDir)
 	} 
 	catch (err) {
 		if (err.code !== 'EEXIST') 
@@ -176,7 +172,8 @@ Transcoder.prototype.seekToPart = function(partIndex, cb) {
 
 Transcoder.prototype.deleteTempFiles = function(cb) {
 	console.log("Deleting temp files " + this.tempFilesDir);
-	rimraf(this.tempFilesDir, cb);
+	rimrafSync(this.tempFilesDir);
+	cb()
 }
 
 Transcoder.prototype.killProc = function() {

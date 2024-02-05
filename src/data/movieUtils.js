@@ -1,13 +1,19 @@
-var videoExtensions = require("./video-extensions.json"),
-	glob = require("glob"),
+var videoExtensions = require("../../config/video-extensions.json"),
+	{ glob} = require("glob"),
 	path = require('path'),
 	tnp = require('torrent-name-parser');
+const {raw} = require("express");
 	
 module.exports = {
-	allVideoFiles: function(path, cb){
-		glob(`**/*.{${videoExtensions.join(',')}}`, {
-			cwd: path
-		}, cb);
+	allVideoFiles: function(path){
+		return new Promise((resolve, reject) => {
+			glob(`**/*.{${videoExtensions.join(',')}}`, {
+				cwd: path
+			}).then((res) => {
+				resolve(res);
+			})
+		})
+
 	},
 
 	addVideo: function(filePath, model){
@@ -28,38 +34,26 @@ module.exports = {
 		})
 	},
 
-	refreshVideosList: function(path, model){
-		return new Promise((resolve, reject) => {
-			model.sync({force: true})
-				.then(() => {
-					this.allVideoFiles(path, (err, files) => {
-						if(err){
-							return reject(err);
-						}
+	refreshVideosList: async function(moviesPath, model){
+		await model.sync({force: true});
+		const movies = await this.allVideoFiles(path.join(process.cwd(), moviesPath));
 
-						let promises = files.map(file => {
-							return this.addVideo(file, model);
-						})
+		let result = [];
+		for (const movie of movies) {
+			result.push(await this.addVideo(movie, model));
+		}
 
-						Promise.all(promises)
-							.then(results => {
-								return resolve(this.videosListResponse(results));
-							});
-					})
-				});
-		});
+		return this.videosListResponse(result);
 	},
 
 	videosListResponse: function(movies){
-		return new Promise(function(resolve, reject){
-			return resolve(movies.map(video => {
-				return {
-					id: video.id,
-					title: video.title,
-					year: video.year
-				}
-			}));
-		});
+		return movies.map((video) => {
+			return {
+				id: video.id,
+				title: video.title,
+				year: video.year
+			}
+		})
 	},
 
 	m3u8Generate(dirPath, segmentTime, videoDuration){

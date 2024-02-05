@@ -62,3 +62,6 @@ config/appConfig.json
 database/*.json
 nodemon*
 *.sqlite
+/database/movies.db
+/movies/*
+.idea
