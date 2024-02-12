@@ -1,19 +1,27 @@
 {
   "name": "TGB",
   "version": "1.0.0",
+  "scripts": {
+    "start": "node ./src/index.js"
+  },
   "dependencies": {
+    "chokidar": "^3.5.3",
     "express": ">= 4.15.2",
+    "express-fingerprint": "^1.2.2",
     "fingerprintjs": "^0.5.3",
     "fingerprintjs2": "^1.5.1",
     "fluent-ffmpeg": ">= 2.1.0",
+    "glob": "^10.3.10",
     "globby": ">= 6.1.0",
     "install": "^0.10.1",
     "loadash": "0.0.1",
     "lowdb": ">= 0.16.2",
-    "nconf": "^0.8.4",
-    "npm": "^4.5.0",
+    "nconf": "^0.12.1",
+    "npm": "^10.4.0",
+    "rimraf": "^5.0.5",
     "send-seekable": "^1.0.4",
-    "sequelize": "^3.30.4",
+    "sequelize": "^6.35.2",
+    "sqlite3": "^5.1.7",
     "torrent-name-parser": "^0.6.5"
   }
 }

@@ -1,6 +1,6 @@
 var Transcoder = require('./Transcoder.js');
 
-var transcoerConfig = require('./config/transcoderConfig.json');
+var transcoerConfig = require('../config/transcoderConfig.json');
 var liveSessions = [];
 
 module.exports = {

@@ -8,5 +8,5 @@
 		"idle": 10000
 	},
 	
-	"storage": "db.sqlite"
+	"storage": "./database/movies.db"
 }

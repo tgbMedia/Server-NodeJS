@@ -1,7 +1,7 @@
 "use strict";
 
 module.exports = function(sequelize, Sequelize) {
-	var Movie = sequelize.define("movies", {
+	return sequelize.define("Movies", {
 		id: {
 			type: Sequelize.UUID,
 			defaultValue: Sequelize.UUIDV4,
@@ -21,6 +21,4 @@ module.exports = function(sequelize, Sequelize) {
 			unique: true
 		}
 	});
-
-	return Movie;
 };
