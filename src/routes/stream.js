@@ -18,7 +18,7 @@ router.get('/video/:id.m3u8', async function(req, res) {
 	sessions.start(
 		req.fingerprint.hash,
 		res,
-		path.resolve(req.app.get('config').moviesDir, movie.path),
+		path.join(process.cwd() ,req.app.get('config').moviesDir, movie.path),
 		(m3u8Content) => {
 			res.send(m3u8Content);
 		}

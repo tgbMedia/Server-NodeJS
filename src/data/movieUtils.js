@@ -21,8 +21,8 @@ module.exports = {
 			let parseName = tnp(path.basename(filePath));			
 
 			model.create({
-				title: parseName.title,
-				 year: parseName.year,
+				title: `${parseName.title}.${parseName.season}.${parseName.episode}`,
+				 year: parseName.excess,
 				 path: filePath
 			})
 			.then(function(movie){

@@ -8,7 +8,6 @@ class DataLayer {
         database,
         movieUtils,
     ) {
-        //TODO: Add all configurations. and remove on the project
         this.db = database;
         this.movieModel = this.db.model("Movies");
         this.movieUtils = movieUtils;
